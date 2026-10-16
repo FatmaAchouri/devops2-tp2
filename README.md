@@ -105,24 +105,26 @@ Créez à la racine le fichier **`.env.example`** :
 ```dotenv
 # Copier ce fichier en .env :  cp .env.example .env
 # Ne JAMAIS commiter le fichier .env
+# Valeurs prêtes à l'emploi pour le TP (développement local uniquement).
+# En production, régénérer chaque secret avec :  openssl rand -base64 16
 
 # ---------- PostgreSQL ----------
 POSTGRES_DB=strapi
 POSTGRES_USER=strapi
-POSTGRES_PASSWORD=change-me
+POSTGRES_PASSWORD=strapi-tp2-pg
 
 # ---------- pgAdmin ----------
+# Domaine non réservé obligatoire (pas de .local ni .test)
 PGADMIN_DEFAULT_EMAIL=admin@example.com
-PGADMIN_DEFAULT_PASSWORD=change-me
+PGADMIN_DEFAULT_PASSWORD=pgadmin-tp2
 
 # ---------- Strapi ----------
-# Générer chaque secret avec :  openssl rand -base64 16
-APP_KEYS=cleA==,cleB==,cleC==,cleD==
-API_TOKEN_SALT=change-me
-ADMIN_JWT_SECRET=change-me
-JWT_SECRET=change-me
-TRANSFER_TOKEN_SALT=change-me
-ENCRYPTION_KEY=change-me
+APP_KEYS=vKHF0/Gxc/W0QVQ3xlDrHA==,RFUp+54vJvS14jz01v3MMg==,z3IGHRC2zGTMlkRSzYpKCg==,vbRAfara76SfIwaB3trihA==
+API_TOKEN_SALT=04bsVkBWNx304n4zDAxaBw==
+ADMIN_JWT_SECRET=nhPTU0esMilqZlTy9FipMA==
+JWT_SECRET=sanZHZWNKYkTgFeYMv/bxA==
+TRANSFER_TOKEN_SALT=yPuW4OB/nCAJCoCYpOlmiw==
+ENCRYPTION_KEY=ov9GH8UuL183OXtzIkAW6g==
 
 # ---------- Ports exposés sur la machine hôte ----------
 FRONTEND_PORT=3000
@@ -138,11 +140,10 @@ node_modules
 .next
 ```
 
-Puis créez votre `.env` et remplacez les secrets Strapi par des valeurs générées :
+Puis créez votre `.env` (les valeurs fournies fonctionnent telles quelles pour le TP) :
 
 ```bash
 cp .env.example .env
-openssl rand -base64 16      # à lancer pour chaque secret (4 fois pour APP_KEYS)
 ```
 
 ### 2.2 Le service `postgres`
