@@ -686,8 +686,9 @@ docker compose ps        # postgres et strapi "healthy", frontend et pgadmin "Up
 4. **Panne** : `docker compose stop strapi`, rechargez <http://localhost:3000>. Que s'affiche-t-il ?
    Relancez avec `docker compose start strapi`.
 
-> **Q14.** Que fait `restart: unless-stopped` ? Testez avec `docker compose kill strapi` puis
-> `docker compose ps`.
+> **Q14.** Que fait `restart: unless-stopped` ? Pourquoi `strapi` ne redémarre-t-il pas tout seul
+> après `docker compose stop strapi` (ou `docker compose kill strapi`) ? Dans quel cas Docker le
+> redémarre-t-il automatiquement ?
 
 ---
 
