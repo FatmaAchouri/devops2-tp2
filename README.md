@@ -1,6 +1,6 @@
 # TP2 — Orchestrer une application multi-conteneurs avec Docker Compose
 
-**Module :** DevOps 2 (ECUE733) · **Durée :** 3 h · **Travail :** en binôme
+**Module :** DevOps 2 (ECUE733) · 
 
 Vous allez conteneuriser et orchestrer une application web complète composée de quatre services.
 Le code des deux applications (`backend/` et `frontend/`) est **fourni**. Vous allez écrire toute
@@ -68,7 +68,7 @@ Les fichiers marqués ✏️ sont à créer (ou à modifier) par vous. Le reste 
 
 ---
 
-## Partie 1 — Découvrir les deux applications (15 min)
+## Partie 1 — Découvrir les deux applications 
 
 Forkez ce dépôt et clonez votre fork.
 
@@ -96,7 +96,7 @@ npx create-next-app@latest frontend --ts --app --no-eslint --no-tailwind \
 
 ---
 
-## Partie 2 — PostgreSQL (20 min)
+## Partie 2 — PostgreSQL 
 
 ### 2.1 Les variables d'environnement
 
@@ -189,7 +189,7 @@ docker compose exec postgres psql -U strapi -d strapi -c '\l'
 
 ---
 
-## Partie 3 — pgAdmin (15 min)
+## Partie 3 — pgAdmin 
 
 ### 3.1 Pré-enregistrer le serveur
 
@@ -258,7 +258,7 @@ Ouvrez <http://localhost:5050> (`admin@example.com` / mot de passe du `.env`), d
 
 ---
 
-## Partie 4 — Strapi (40 min)
+## Partie 4 — Strapi 
 
 ### 4.1 Le Dockerfile
 
@@ -378,7 +378,7 @@ docker compose logs -f strapi          # attendez que Strapi annonce son démarr
 
 ---
 
-## Partie 5 — Next.js (40 min)
+## Partie 5 — Next.js 
 
 ### 5.1 Comprendre le code fourni
 
@@ -491,7 +491,7 @@ Ouvrez <http://localhost:3000> : vos articles s'affichent.
 
 ---
 
-## Partie 6 — Réseaux et sécurité (20 min)
+## Partie 6 — Réseaux et sécurité 
 
 Par défaut, Compose met tous les services dans un seul réseau : le front peut donc joindre la base.
 On va séparer la stack en deux réseaux :
@@ -671,7 +671,7 @@ docker compose ps        # postgres et strapi "healthy", frontend et pgadmin "Up
 
 ---
 
-## Partie 7 — Cycle de vie (15 min)
+## Partie 7 — Cycle de vie 
 
 1. **Persistance** : `docker compose down` puis `docker compose up -d`. Vos articles sont-ils
    toujours là ? Et après `docker compose down -v` ?
