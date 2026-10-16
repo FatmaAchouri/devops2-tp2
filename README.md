@@ -2,14 +2,17 @@
 
 **Module :** DevOps 2 (ECUE733) · **Durée :** 3 h · **Travail :** en binôme
 
-Vous allez conteneuriser et orchestrer une application web complète composée de quatre services :
+Vous allez conteneuriser et orchestrer une application web complète composée de quatre services.
+Le code des deux applications (`backend/` et `frontend/`) est **fourni**. Vous allez écrire toute
+la partie Docker. Le contenu de chaque fichier est donné ci-dessous : **lisez-le, comprenez chaque
+ligne** et répondez aux questions. C'est ce qui est évalué.
 
-| Service    | Rôle                                   | Image                         | Port hôte |
-|------------|----------------------------------------|-------------------------------|-----------|
-| `frontend` | Site Next.js qui affiche des articles  | construite (`./frontend`)     | 3000      |
-| `strapi`   | CMS headless : API REST + admin        | construite (`./backend`)      | 1337      |
-| `postgres` | Base de données de Strapi              | `postgres:16-alpine`          | *aucun*   |
-| `pgadmin`  | Interface web d'administration de la BD | `dpage/pgadmin4:9`            | 5050      |
+| Service    | Rôle                                    | Image                     | Port hôte |
+|------------|-----------------------------------------|---------------------------|-----------|
+| `frontend` | Site Next.js qui affiche des articles   | construite (`./frontend`) | 3000      |
+| `strapi`   | CMS headless : API REST + admin         | construite (`./backend`)  | 1337      |
+| `postgres` | Base de données de Strapi               | `postgres:16-alpine`      | *aucun*   |
+| `pgadmin`  | Interface web d'administration de la BD | `dpage/pgadmin4:9`        | 5050      |
 
 ```
         Navigateur
@@ -39,32 +42,35 @@ Vous allez conteneuriser et orchestrer une application web complète composée d
 ## Prérequis
 
 - Docker Desktop (ou Docker Engine) avec **Docker Compose v2** : `docker compose version`
-- Un éditeur de code ; Node.js n'est pas nécessaire sur la machine (tout se construit dans Docker)
+- Un éditeur de code. Node.js n'est pas nécessaire sur votre machine : tout se construit dans Docker.
 - Avoir terminé le TP1 (images, conteneurs, `Dockerfile` simple)
 
-## Structure attendue du dépôt
+## Fichiers à créer
+
+Les fichiers marqués ✏️ sont à créer (ou à modifier) par vous. Le reste est fourni.
 
 ```
 .
-├── docker-compose.yml
-├── .env.example          # commité : valeurs d'exemple
-├── .env                  # NON commité (dans .gitignore)
+├── docker-compose.yml        ✏️ Parties 2 à 6
+├── .env.example              ✏️ Partie 2 (commité)
+├── .env                      ✏️ Partie 2 (copie de .env.example, NON commitée)
+├── .gitignore                ✏️ Partie 2 (à vérifier)
 ├── pgadmin/
-│   └── servers.json
-├── backend/              # projet Strapi (fourni)
-│   ├── Dockerfile
-│   └── .dockerignore
-└── frontend/             # projet Next.js (fourni)
-    ├── Dockerfile
-    └── .dockerignore
+│   └── servers.json          ✏️ Partie 3
+├── backend/                  (projet Strapi fourni)
+│   ├── Dockerfile            ✏️ Partie 4
+│   └── .dockerignore         ✏️ Partie 4
+└── frontend/                 (projet Next.js fourni)
+    ├── next.config.ts        ✏️ Partie 5 (à modifier)
+    ├── Dockerfile            ✏️ Partie 5
+    └── .dockerignore         ✏️ Partie 5
 ```
 
 ---
 
 ## Partie 1 — Découvrir les deux applications (15 min)
 
-Forkez ce dépôt et clonez-le. Le code des deux applications est **fourni** ; vous n'avez à
-écrire que la partie Docker (`Dockerfile`, `.dockerignore`, `docker-compose.yml`, `.env`).
+Forkez ce dépôt et clonez votre fork.
 
 | Dossier     | Application                 | Ce qu'il faut regarder                                        |
 |-------------|-----------------------------|---------------------------------------------------------------|
@@ -88,146 +94,602 @@ npx create-next-app@latest frontend --ts --app --no-eslint --no-tailwind \
 > **Q2.** À quoi sert `backend/.env.example` ? Pourquoi le vrai fichier `.env` ne doit-il jamais
 > être commité ?
 
+---
+
 ## Partie 2 — PostgreSQL (20 min)
 
-Créez `docker-compose.yml` avec un premier service `postgres` :
+### 2.1 Les variables d'environnement
 
-- image `postgres:16-alpine` ;
-- base, utilisateur et mot de passe lus depuis le fichier `.env` (`${POSTGRES_DB}`…) ;
-- un **volume nommé** `pgdata` monté sur `/var/lib/postgresql/data` ;
-- un `healthcheck` basé sur `pg_isready` ;
-- **aucun port publié** sur l'hôte.
+Créez à la racine le fichier **`.env.example`** :
 
-Créez `.env.example` (commité) et `.env` (ignoré par git). Démarrez et vérifiez :
+```dotenv
+# Copier ce fichier en .env :  cp .env.example .env
+# Ne JAMAIS commiter le fichier .env
+# Valeurs prêtes à l'emploi pour le TP (développement local uniquement).
+# En production, régénérer chaque secret avec :  openssl rand -base64 16
+
+# ---------- PostgreSQL ----------
+POSTGRES_DB=strapi
+POSTGRES_USER=strapi
+POSTGRES_PASSWORD=strapi-tp2-pg
+
+# ---------- pgAdmin ----------
+# Domaine non réservé obligatoire (pas de .local ni .test)
+PGADMIN_DEFAULT_EMAIL=admin@example.com
+PGADMIN_DEFAULT_PASSWORD=pgadmin-tp2
+
+# ---------- Strapi ----------
+APP_KEYS=vKHF0/Gxc/W0QVQ3xlDrHA==,RFUp+54vJvS14jz01v3MMg==,z3IGHRC2zGTMlkRSzYpKCg==,vbRAfara76SfIwaB3trihA==
+API_TOKEN_SALT=04bsVkBWNx304n4zDAxaBw==
+ADMIN_JWT_SECRET=nhPTU0esMilqZlTy9FipMA==
+JWT_SECRET=sanZHZWNKYkTgFeYMv/bxA==
+TRANSFER_TOKEN_SALT=yPuW4OB/nCAJCoCYpOlmiw==
+ENCRYPTION_KEY=ov9GH8UuL183OXtzIkAW6g==
+
+# ---------- Ports exposés sur la machine hôte ----------
+FRONTEND_PORT=3000
+STRAPI_PORT=1337
+PGADMIN_PORT=5050
+```
+
+Vérifiez que le fichier **`.gitignore`** à la racine contient bien (créez-le sinon) :
+
+```gitignore
+.env
+node_modules
+.next
+```
+
+Puis créez votre `.env` (les valeurs fournies fonctionnent telles quelles pour le TP) :
 
 ```bash
+cp .env.example .env
+```
+
+### 2.2 Le service `postgres`
+
+Créez **`docker-compose.yml`** à la racine avec ce premier service :
+
+```yaml
+name: tp2
+
+services:
+  # ---------------- Base de données ----------------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # Pas de "ports" : la base n'est joignable que depuis les autres conteneurs
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
+```
+
+Démarrez et vérifiez :
+
+```bash
+docker compose config                  # affiche le fichier avec les variables remplacées
 docker compose up -d postgres
-docker compose ps                      # le service doit passer "healthy"
+docker compose ps                      # attendez l'état "healthy"
 docker compose exec postgres psql -U strapi -d strapi -c '\l'
 ```
 
 > **Q3.** Quelle différence entre `docker compose down` et `docker compose down -v` ? Testez.
-> **Q4.** Dans un `healthcheck`, pourquoi écrit-on `$${POSTGRES_USER}` avec deux `$` ?
+> **Q4.** Dans le `healthcheck`, pourquoi écrit-on `$${POSTGRES_USER}` avec deux `$` ?
+
+---
 
 ## Partie 3 — pgAdmin (15 min)
 
-Ajoutez le service `pgadmin` :
+### 3.1 Pré-enregistrer le serveur
 
-- image `dpage/pgadmin4:9`, port hôte `5050` → port conteneur `80` ;
-- identifiants via `PGADMIN_DEFAULT_EMAIL` / `PGADMIN_DEFAULT_PASSWORD` (depuis `.env`) ;
-- un volume nommé pour `/var/lib/pgadmin` ;
-- démarre **après** que `postgres` est *healthy*.
+Créez **`pgadmin/servers.json`**. pgAdmin le lit au premier démarrage et ajoute automatiquement
+la connexion à PostgreSQL (le mot de passe vous sera demandé à la première connexion) :
 
-**Bonus de la partie :** pré-enregistrez le serveur PostgreSQL dans pgAdmin grâce à un fichier
-`pgadmin/servers.json` monté en lecture seule sur `/pgadmin4/servers.json`.
+```json
+{
+  "Servers": {
+    "1": {
+      "Name": "TP2 - PostgreSQL",
+      "Group": "DevOps 2",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "postgres",
+      "Username": "strapi",
+      "SSLMode": "prefer"
+    }
+  }
+}
+```
 
-Connectez-vous sur <http://localhost:5050> et explorez la base.
+### 3.2 Le service `pgadmin`
 
-> **Q5.** Dans pgAdmin, quel *hostname* faut-il saisir pour joindre la base ? Pourquoi ?
+Dans `docker-compose.yml`, ajoutez ce service **sous `postgres`** (dans `services:`) :
+
+```yaml
+  # ---------------- Administration de la base ----------------
+  pgadmin:
+    image: dpage/pgadmin4:9
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      # Écoute en IPv4 (évite un crash sur les machines où IPv6 est désactivé)
+      PGADMIN_LISTEN_ADDRESS: 0.0.0.0
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+```
+
+et déclarez son volume en bas du fichier :
+
+```yaml
+volumes:
+  pgdata:
+  pgadmin-data:
+```
+
+```bash
+docker compose up -d pgadmin
+docker compose logs -f pgadmin         # attendez "Listening at: http://0.0.0.0:80"
+```
+
+Ouvrez <http://localhost:5050> (`admin@example.com` / mot de passe du `.env`), dépliez
+*DevOps 2 → TP2 - PostgreSQL* et explorez la base.
+
+> **Q5.** Dans `servers.json`, pourquoi `"Host": "postgres"` ? Que signifie `:ro` dans le montage ?
+> Que veut dire `${PGADMIN_PORT:-5050}` ?
+
+---
 
 ## Partie 4 — Strapi (40 min)
 
-### 4.1 Dockerfile
+### 4.1 Le Dockerfile
 
-Écrivez `backend/Dockerfile` en **deux étapes** :
+Créez **`backend/Dockerfile`** :
 
-1. étape `build` : `node:22-alpine`, copie de `package.json` + `package-lock.json`, `npm ci`,
-   copie du code, `npm run build` (construit le panneau d'admin) ;
-2. étape finale : repart de `node:22-alpine`, récupère le résultat, s'exécute avec
-   l'utilisateur **non-root** `node`, expose `1337`, lance `npm run start`.
+```dockerfile
+# ---- 1. Build : dépendances + panneau d'administration ----
+FROM node:22-alpine AS build
+WORKDIR /opt/app
+ENV NODE_ENV=production
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
 
-Ajoutez un `.dockerignore` (au minimum `node_modules`, `.env`, `.tmp`, `build`, `.git`).
+# ---- 2. Image d'exécution ----
+FROM node:22-alpine
+WORKDIR /opt/app
+ENV NODE_ENV=production
+COPY --from=build --chown=node:node /opt/app ./
+USER node
+EXPOSE 1337
+CMD ["npm", "run", "start"]
+```
+
+Créez **`backend/.dockerignore`** (les fichiers listés ne sont pas envoyés au build) :
+
+```
+node_modules
+build
+dist
+.tmp
+.cache
+.strapi
+.git
+Dockerfile
+.dockerignore
+.env
+public/uploads/*
+!public/uploads/.gitkeep
+```
+
+Testez le build seul :
+
+```bash
+docker build -t tp2/strapi ./backend
+```
 
 > **Q6.** Pourquoi copier `package*.json` et lancer `npm ci` **avant** de copier le reste du code ?
+> Modifiez un fichier de `backend/config/` et relancez le build : quelles étapes sont rejouées ?
+> **Q7.** À quoi servent `USER node` et `--chown=node:node` ?
 
-### 4.2 Service
+### 4.2 Le service `strapi`
 
-Ajoutez le service `strapi` :
+Ajoutez ce service dans `docker-compose.yml` :
 
-- `build: ./backend` ;
-- variables `DATABASE_*` pointant vers le service `postgres`, et les secrets Strapi
-  (`APP_KEYS`, `API_TOKEN_SALT`, `ADMIN_JWT_SECRET`, `JWT_SECRET`, `TRANSFER_TOKEN_SALT`,
-  `ENCRYPTION_KEY`) depuis `.env` — générez-les avec `openssl rand -base64 16` ;
-- un volume pour `public/uploads` ;
-- démarre quand `postgres` est *healthy* ;
-- un `healthcheck` sur `http://127.0.0.1:1337/_health`.
+```yaml
+  # ---------------- CMS headless (API) ----------------
+  strapi:
+    build: ./backend
+    image: tp2/strapi:latest
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: 1337
+      DATABASE_CLIENT: postgres
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB}
+      DATABASE_USERNAME: ${POSTGRES_USER}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      APP_KEYS: ${APP_KEYS}
+      API_TOKEN_SALT: ${API_TOKEN_SALT}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+    volumes:
+      - strapi-uploads:/opt/app/public/uploads
+    ports:
+      - "${STRAPI_PORT:-1337}:1337"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:1337/_health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+```
 
-Ouvrez <http://localhost:1337/admin>, créez le compte administrateur, puis créez et **publiez**
-quelques articles. Dans *Settings → Users & Permissions → Roles → Public*, autorisez `find` et
-`findOne` sur *Article*. Vérifiez : `curl http://localhost:1337/api/articles`.
+et complétez les volumes :
 
-> **Q7.** Retrouvez la table `articles` dans pgAdmin. Combien de lignes pour un article publié ?
+```yaml
+volumes:
+  pgdata:
+  pgadmin-data:
+  strapi-uploads:
+```
+
+```bash
+docker compose up -d --build strapi
+docker compose logs -f strapi          # attendez que Strapi annonce son démarrage
+```
+
+### 4.3 Configurer Strapi
+
+1. Ouvrez <http://localhost:1337/admin> et créez le compte administrateur.
+2. *Content Manager → Article → Create new entry* : créez 2 ou 3 articles et cliquez sur **Publish**.
+3. *Settings → Users & Permissions plugin → Roles → Public → Article* : cochez `find` et
+   `findOne`, puis **Save**.
+4. Vérifiez : `curl http://localhost:1337/api/articles`
+
+> **Q8.** Que fait `depends_on: condition: service_healthy` ? Que se passerait-il sans ?
+> **Q9.** Retrouvez la table `articles` dans pgAdmin. Combien de lignes pour un article publié ?
+
+---
 
 ## Partie 5 — Next.js (40 min)
 
-### 5.1 Code
+### 5.1 Comprendre le code fourni
 
 Lisez `frontend/app/page.tsx` : les articles sont récupérés depuis Strapi **côté serveur**.
 L'URL de Strapi vient de la variable d'environnement `STRAPI_URL`, lue **à l'exécution**
 (pas au build) :
 
 ```tsx
-import { connection } from "next/server";
-
-async function getArticles() {
+async function getArticles(): Promise<Article[]> {
   await connection(); // force le rendu à la requête : STRAPI_URL est lue au runtime
-  const res = await fetch(`${process.env.STRAPI_URL}/api/articles`, { cache: "no-store" });
-  return (await res.json()).data;
+  const baseUrl = process.env.STRAPI_URL ?? "http://localhost:1337";
+  const res = await fetch(`${baseUrl}/api/articles`, { cache: "no-store" });
+  // ...
 }
 ```
 
-Avec Next.js 16 (`cacheComponents`), le composant qui fait ce `fetch` est placé dans un
-`<Suspense>`.
+### 5.2 Activer la sortie « standalone »
 
-### 5.2 Dockerfile
+Remplacez le contenu de **`frontend/next.config.ts`** par :
 
-Activez `output: "standalone"` dans `next.config.ts`, puis écrivez un `Dockerfile` en
-**trois étapes** : `deps` (`npm ci`), `builder` (`npm run build`), `runner` qui ne contient
-que `.next/standalone`, `.next/static` et `public`, et lance `node server.js` en tant que `node`.
+```ts
+import type { NextConfig } from "next";
 
-### 5.3 Service
+const nextConfig: NextConfig = {
+  cacheComponents: true,
+  partialPrefetching: true,
+  // Produit .next/standalone : un serveur Node minimal, idéal pour une image Docker légère
+  output: "standalone",
+};
 
-Ajoutez le service `frontend` (port `3000`, `STRAPI_URL=http://strapi:1337`, démarre quand
-`strapi` est *healthy*). Ouvrez <http://localhost:3000> : vos articles s'affichent.
+export default nextConfig;
+```
 
-> **Q8.** Pourquoi `STRAPI_URL=http://localhost:1337` ne fonctionne-t-il pas dans le conteneur ?
-> **Q9.** Comparez la taille de l'image `frontend` avec et sans `output: "standalone"`
-> (`docker images`). Expliquez.
+### 5.3 Le Dockerfile
+
+Créez **`frontend/Dockerfile`** :
+
+```dockerfile
+# ---- 1. Dépendances ----
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# ---- 2. Build ----
+FROM node:22-alpine AS builder
+WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+# ---- 3. Image d'exécution (sortie "standalone", sans node_modules complet) ----
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
+COPY --from=builder --chown=node:node /app/public ./public
+COPY --from=builder --chown=node:node /app/.next/standalone ./
+COPY --from=builder --chown=node:node /app/.next/static ./.next/static
+USER node
+EXPOSE 3000
+CMD ["node", "server.js"]
+```
+
+Créez **`frontend/.dockerignore`** :
+
+```
+node_modules
+.next
+.git
+Dockerfile
+.dockerignore
+.env*
+npm-debug.log*
+```
+
+### 5.4 Le service `frontend`
+
+Ajoutez ce service dans `docker-compose.yml` :
+
+```yaml
+  # ---------------- Front-end ----------------
+  frontend:
+    build: ./frontend
+    image: tp2/frontend:latest
+    restart: unless-stopped
+    environment:
+      # Appel serveur à serveur : on utilise le nom du service, pas "localhost"
+      STRAPI_URL: http://strapi:1337
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      strapi:
+        condition: service_healthy
+```
+
+```bash
+docker compose up -d --build frontend
+```
+
+Ouvrez <http://localhost:3000> : vos articles s'affichent.
+
+> **Q10.** Pourquoi `STRAPI_URL=http://localhost:1337` ne fonctionnerait-il pas dans le conteneur ?
+> **Q11.** Combien d'étapes (`FROM`) a ce Dockerfile ? Qu'est-ce qui se retrouve dans l'image
+> finale ? Retirez temporairement `output: "standalone"` et relancez le build : que se passe-t-il,
+> et pourquoi ? Notez la taille de l'image finale (`docker images tp2/frontend`).
+
+---
 
 ## Partie 6 — Réseaux et sécurité (20 min)
 
-Définissez deux réseaux :
+Par défaut, Compose met tous les services dans un seul réseau : le front peut donc joindre la base.
+On va séparer la stack en deux réseaux :
 
 - `backend` : `postgres`, `pgadmin`, `strapi` ;
 - `frontend` : `strapi`, `frontend`.
 
-Vérifiez que le front ne peut **pas** joindre la base :
+Ajoutez un bloc `networks:` à **chaque service** :
 
-```bash
-docker compose exec frontend sh -c 'nc -zv -w2 postgres 5432'   # doit échouer
-docker compose exec frontend sh -c 'wget -qO- http://strapi:1337/_health && echo OK'
+```yaml
+  postgres:
+    # ...
+    networks:
+      - backend
+
+  pgadmin:
+    # ...
+    networks:
+      - backend
+
+  strapi:
+    # ...
+    networks:
+      - backend
+      - frontend
+
+  frontend:
+    # ...
+    networks:
+      - frontend
 ```
 
-> **Q10.** Quel est l'intérêt de ne publier aucun port pour `postgres` ?
-> **Q11.** Citez deux autres mesures pour durcir cette stack en production.
+et déclarez les réseaux en bas du fichier, au même niveau que `volumes:` :
+
+```yaml
+networks:
+  backend:
+  frontend:
+```
+
+Relancez puis vérifiez l'isolation :
+
+```bash
+docker compose up -d
+docker compose exec frontend sh -c 'nc -zv -w2 postgres 5432'   # doit échouer : "bad address"
+docker compose exec frontend sh -c 'wget -qO- http://strapi:1337/_health && echo OK'
+docker network ls | grep tp2
+```
+
+> **Q12.** Pourquoi `strapi` est-il dans les deux réseaux ? Quel est l'intérêt de ne publier aucun
+> port pour `postgres` ?
+> **Q13.** Citez deux autres mesures pour durcir cette stack en production.
+
+### Le fichier complet
+
+À la fin de cette partie, votre `docker-compose.yml` doit ressembler à ceci :
+
+<details>
+<summary>Afficher le <code>docker-compose.yml</code> complet</summary>
+
+```yaml
+name: tp2
+
+services:
+  # ---------------- Base de données ----------------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - backend
+    # Pas de "ports" : la base n'est joignable que depuis le réseau "backend"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ---------------- Administration de la base ----------------
+  pgadmin:
+    image: dpage/pgadmin4:9
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      # Écoute en IPv4 (évite un crash sur les machines où IPv6 est désactivé)
+      PGADMIN_LISTEN_ADDRESS: 0.0.0.0
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    networks:
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ---------------- CMS headless (API) ----------------
+  strapi:
+    build: ./backend
+    image: tp2/strapi:latest
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: 1337
+      DATABASE_CLIENT: postgres
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB}
+      DATABASE_USERNAME: ${POSTGRES_USER}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      APP_KEYS: ${APP_KEYS}
+      API_TOKEN_SALT: ${API_TOKEN_SALT}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+    volumes:
+      - strapi-uploads:/opt/app/public/uploads
+    ports:
+      - "${STRAPI_PORT:-1337}:1337"
+    networks:
+      - backend
+      - frontend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:1337/_health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  # ---------------- Front-end ----------------
+  frontend:
+    build: ./frontend
+    image: tp2/frontend:latest
+    restart: unless-stopped
+    environment:
+      # Appel serveur à serveur : on utilise le nom du service, pas "localhost"
+      STRAPI_URL: http://strapi:1337
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    networks:
+      - frontend
+    depends_on:
+      strapi:
+        condition: service_healthy
+
+networks:
+  backend:
+  frontend:
+
+volumes:
+  pgdata:
+  pgadmin-data:
+  strapi-uploads:
+```
+
+</details>
+
+Test final, depuis un état vierge :
+
+```bash
+docker compose down -v
+docker compose up -d --build
+docker compose ps        # postgres et strapi "healthy", frontend et pgadmin "Up"
+```
+
+---
 
 ## Partie 7 — Cycle de vie (15 min)
 
-1. Arrêtez la stack avec `docker compose down`, relancez-la : vos articles sont-ils toujours là ?
-2. Faites une sauvegarde : `docker compose exec postgres pg_dump -U strapi strapi > backup.sql`
-3. Modifiez un titre dans le code du front, reconstruisez **uniquement** ce service :
-   `docker compose up -d --build frontend`
-4. Simulez une panne : `docker compose stop strapi` puis rechargez le front. Que se passe-t-il ?
-   Que fait `restart: unless-stopped` ?
+1. **Persistance** : `docker compose down` puis `docker compose up -d`. Vos articles sont-ils
+   toujours là ? Et après `docker compose down -v` ?
+2. **Sauvegarde** :
+   ```bash
+   docker compose exec postgres pg_dump -U strapi strapi > backup.sql
+   ```
+3. **Rebuild ciblé** : modifiez le titre `<h1>` dans `frontend/app/page.tsx`, puis reconstruisez
+   **uniquement** ce service :
+   ```bash
+   docker compose up -d --build frontend
+   ```
+4. **Panne** : `docker compose stop strapi`, rechargez <http://localhost:3000>. Que s'affiche-t-il ?
+   Relancez avec `docker compose start strapi`.
 
-## Bonus
-
-- **Mode développement** : un fichier `compose.dev.yml` qui lance `npm run develop` (Strapi) et
-  `npm run dev` (Next.js) avec le code monté en volume ou via `develop.watch`
-  (`docker compose -f docker-compose.yml -f compose.dev.yml watch`).
-- **Initialisation automatique** : dans `backend/src/index.js` (`bootstrap`), donner les droits
-  publics sur *Article* et créer un article de démonstration au premier démarrage.
-- **CI** : un workflow GitHub Actions qui exécute `docker compose build` à chaque push.
+> **Q14.** Que fait `restart: unless-stopped` ? Pourquoi `strapi` ne redémarre-t-il pas tout seul
+> après `docker compose stop strapi` (ou `docker compose kill strapi`) ? Dans quel cas Docker le
+> redémarre-t-il automatiquement ?
 
 ---
 
@@ -235,39 +697,38 @@ docker compose exec frontend sh -c 'wget -qO- http://strapi:1337/_health && echo
 
 Sur votre fork, avant la fin de la séance :
 
-1. le code complet (structure ci-dessus) — `docker compose up -d --build` doit suffire à
-   tout démarrer à partir d'un clone + `cp .env.example .env` ;
-2. un fichier `REPONSES.md` avec les réponses aux questions Q1 à Q11 ;
+1. tous les fichiers ✏️ commités — `cp .env.example .env && docker compose up -d --build` doit
+   suffire à tout démarrer à partir d'un clone ;
+2. un fichier `REPONSES.md` avec les réponses aux questions **Q1 à Q14** ;
 3. une capture d'écran du front affichant vos articles et une de pgAdmin montrant la table `articles`.
 
 ## Barème indicatif (/20)
 
-| Critère                                                         | Points |
-|-----------------------------------------------------------------|:------:|
-| `postgres` : volume, healthcheck, `.env`, pas de port publié    | 3      |
-| `pgadmin` fonctionnel (+ `servers.json`)                        | 2      |
-| `Dockerfile` Strapi multi-stage, non-root, `.dockerignore`      | 3      |
-| Service `strapi` : variables, `depends_on` healthy, healthcheck | 2      |
-| `Dockerfile` Next.js standalone, non-root                       | 3      |
-| Front affichant les articles via `STRAPI_URL`                   | 2      |
-| Réseaux `frontend` / `backend` correctement isolés              | 2      |
-| Réponses aux questions (`REPONSES.md`)                          | 3      |
-| Bonus                                                           | +2     |
+| Critère                                                                  | Points |
+|--------------------------------------------------------------------------|:------:|
+| La stack démarre depuis un clone (`up -d --build`), sans `.env` commité  | 4      |
+| `postgres` + `pgadmin` fonctionnels (volume, healthcheck, `servers.json`) | 3      |
+| Image Strapi construite, service `strapi` healthy, API publique          | 3      |
+| Image Next.js standalone, front affichant les articles                   | 3      |
+| Réseaux `frontend` / `backend` isolés                                    | 2      |
+| Réponses aux questions (`REPONSES.md`)                                   | 5      |
 
 ## Pièges fréquents
 
 - **`localhost` dans un conteneur** désigne le conteneur lui-même : utilisez le **nom du service**.
+- **YAML** : l'indentation compte (2 espaces, pas de tabulation). En cas de doute :
+  `docker compose config`.
 - **pgAdmin redémarre en boucle** : l'email `PGADMIN_DEFAULT_EMAIL` est refusé s'il utilise un
-  domaine réservé (`.local`, `.test`…) → prenez `admin@example.com`. Sur une machine sans IPv6,
-  ajoutez `PGADMIN_LISTEN_ADDRESS: 0.0.0.0`.
-- **Strapi plante au démarrage** avec « Missing APP_KEYS » : une variable secrète est vide.
-- **`npm ci` échoue** : le `package-lock.json` est absent ou ignoré par `.dockerignore`.
-- **Le front affiche « Forbidden »** : les permissions du rôle *Public* ne sont pas accordées,
-  ou l'article n'est pas **publié**.
-- **Le build Next.js échoue en contactant Strapi** : la page est pré-rendue au build ; utilisez
-  `await connection()` (ou `cache: "no-store"`) pour un rendu à la requête.
+  domaine réservé (`.local`, `.test`…) → gardez `admin@example.com`.
+- **Strapi plante au démarrage** avec « Missing APP_KEYS » : une variable secrète est vide dans `.env`.
+- **`npm ci` échoue** : le `package-lock.json` a été supprimé ou ajouté au `.dockerignore`.
+- **Le front affiche « Strapi a répondu 403 »** : les permissions du rôle *Public* ne sont pas
+  accordées (Partie 4.3).
+- **Le front affiche « Aucun article publié »** : l'article est en brouillon, cliquez sur **Publish**.
+- **`COPY ... /app/.next/standalone` échoue** : `output: "standalone"` manque dans `next.config.ts`.
 - Après un changement des variables `POSTGRES_*`, la base **n'est pas recréée** tant que le volume
   existe : `docker compose down -v`.
+- Sur Mac Apple Silicon ou Windows, le premier build de Strapi peut prendre plusieurs minutes.
 
 ## Commandes utiles
 
@@ -278,4 +739,5 @@ docker compose ps                # état et santé des services
 docker compose logs -f strapi    # suivre les logs d'un service
 docker compose exec strapi sh    # shell dans un conteneur
 docker compose down [-v]         # arrêter (et supprimer les volumes)
+docker images | grep tp2         # taille des images construites
 ```
