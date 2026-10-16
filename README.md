@@ -39,7 +39,7 @@ Vous allez conteneuriser et orchestrer une application web complète composée d
 ## Prérequis
 
 - Docker Desktop (ou Docker Engine) avec **Docker Compose v2** : `docker compose version`
-- Node.js 20 ou 22 et npm (uniquement pour générer les projets)
+- Un éditeur de code ; Node.js n'est pas nécessaire sur la machine (tout se construit dans Docker)
 - Avoir terminé le TP1 (images, conteneurs, `Dockerfile` simple)
 
 ## Structure attendue du dépôt
@@ -51,39 +51,42 @@ Vous allez conteneuriser et orchestrer une application web complète composée d
 ├── .env                  # NON commité (dans .gitignore)
 ├── pgadmin/
 │   └── servers.json
-├── backend/              # projet Strapi
+├── backend/              # projet Strapi (fourni)
 │   ├── Dockerfile
 │   └── .dockerignore
-└── frontend/             # projet Next.js
+└── frontend/             # projet Next.js (fourni)
     ├── Dockerfile
     └── .dockerignore
 ```
 
 ---
 
-## Partie 1 — Générer les deux projets (15 min)
+## Partie 1 — Découvrir les deux applications (15 min)
 
-Forkez ce dépôt, clonez-le, puis à la racine :
+Forkez ce dépôt et clonez-le. Le code des deux applications est **fourni** ; vous n'avez à
+écrire que la partie Docker (`Dockerfile`, `.dockerignore`, `docker-compose.yml`, `.env`).
+
+| Dossier     | Application                 | Ce qu'il faut regarder                                        |
+|-------------|-----------------------------|---------------------------------------------------------------|
+| `backend/`  | Strapi 5 (JavaScript)       | `config/database.js`, `config/server.js`, `.env.example`, le type de contenu `src/api/article/` (`title`, `summary`) |
+| `frontend/` | Next.js 16 (App Router, TS) | `app/page.tsx` (appel à Strapi), `next.config.ts`             |
+
+Pour information, ils ont été générés avec :
 
 ```bash
-# Strapi 5, en JavaScript, configuré pour PostgreSQL
 npx create-strapi@latest backend --non-interactive --skip-cloud --no-run --js \
   --use-npm --no-example --no-git-init \
   --dbclient=postgres --dbhost=postgres --dbport=5432 \
   --dbname=strapi --dbusername=strapi --dbpassword=strapi
-
-# Next.js (App Router, TypeScript)
 npx create-next-app@latest frontend --ts --app --no-eslint --no-tailwind \
   --no-src-dir --import-alias "@/*" --use-npm --disable-git --yes
 ```
 
-Dans `backend/`, créez un type de contenu **Article** (champs `title` *texte court, requis* et
-`summary` *texte long*). Vous pouvez le faire plus tard depuis l'admin Strapi en mode
-développement, ou directement en créant le fichier
-`backend/src/api/article/content-types/article/schema.json` (+ `controllers/`, `routes/`, `services/`).
-
-> **Q1.** Pourquoi `--dbhost=postgres` et non `localhost` ?
-> **Q2.** Le générateur a créé un fichier `backend/.env`. Que contient-il ? Doit-il être commité ?
+> **Q1.** Lisez `backend/config/database.js` : quelles variables d'environnement Strapi attend-il
+> pour se connecter à PostgreSQL ? Quelle valeur faudra-t-il donner à `DATABASE_HOST`, et pourquoi
+> pas `localhost` ?
+> **Q2.** À quoi sert `backend/.env.example` ? Pourquoi le vrai fichier `.env` ne doit-il jamais
+> être commité ?
 
 ## Partie 2 — PostgreSQL (20 min)
 
@@ -159,9 +162,9 @@ quelques articles. Dans *Settings → Users & Permissions → Roles → Public*,
 
 ### 5.1 Code
 
-Dans `frontend/app/page.tsx`, récupérez les articles depuis Strapi **côté serveur** et
-affichez leur titre et leur résumé. L'URL de Strapi doit venir d'une variable d'environnement
-`STRAPI_URL`, lue **à l'exécution** (pas au build) :
+Lisez `frontend/app/page.tsx` : les articles sont récupérés depuis Strapi **côté serveur**.
+L'URL de Strapi vient de la variable d'environnement `STRAPI_URL`, lue **à l'exécution**
+(pas au build) :
 
 ```tsx
 import { connection } from "next/server";
@@ -173,7 +176,7 @@ async function getArticles() {
 }
 ```
 
-Avec Next.js 16 (`cacheComponents`), le composant qui fait ce `fetch` doit être placé dans un
+Avec Next.js 16 (`cacheComponents`), le composant qui fait ce `fetch` est placé dans un
 `<Suspense>`.
 
 ### 5.2 Dockerfile
