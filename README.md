@@ -693,81 +693,6 @@ docker compose ps        # postgres et strapi "healthy", frontend et pgadmin "Up
 
 ---
 
-## Bonus
-
-### Bonus 1 — Initialisation automatique de Strapi
-
-Remplacez le contenu de `backend/src/index.js` pour qu'au démarrage Strapi ouvre la lecture des
-articles au public et crée un article de démonstration si la table est vide :
-
-```js
-'use strict';
-
-const PUBLIC_ACTIONS = ['api::article.article.find', 'api::article.article.findOne'];
-
-module.exports = {
-  register(/*{ strapi }*/) {},
-
-  async bootstrap({ strapi }) {
-    const publicRole = await strapi.db
-      .query('plugin::users-permissions.role')
-      .findOne({ where: { type: 'public' } });
-
-    for (const action of PUBLIC_ACTIONS) {
-      const existing = await strapi.db
-        .query('plugin::users-permissions.permission')
-        .findOne({ where: { action, role: publicRole.id } });
-      if (!existing) {
-        await strapi.db
-          .query('plugin::users-permissions.permission')
-          .create({ data: { action, role: publicRole.id } });
-      }
-    }
-
-    const articles = strapi.documents('api::article.article');
-    if ((await articles.count()) === 0) {
-      await articles.create({
-        data: {
-          title: 'Hello DevOps 2',
-          summary: 'Article servi par Strapi, stocké dans PostgreSQL, affiché par Next.js.',
-        },
-        status: 'published',
-      });
-    }
-  },
-};
-```
-
-Testez avec `docker compose down -v && docker compose up -d --build` : l'article s'affiche sans
-aucune action dans l'admin.
-
-### Bonus 2 — CI
-
-Créez `.github/workflows/docker.yml` pour vérifier à chaque push que la stack se construit :
-
-```yaml
-name: Docker build
-
-on: [push, pull_request]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: cp .env.example .env
-      - run: docker compose config -q
-      - run: docker compose build
-```
-
-### Bonus 3 — Mode développement (sans corrigé)
-
-Écrivez un `compose.dev.yml` qui lance `npm run develop` (Strapi) et `npm run dev` (Next.js) avec
-rechargement à chaud, en utilisant `develop.watch`
-(`docker compose -f docker-compose.yml -f compose.dev.yml watch`).
-
----
-
 ## Livrables
 
 Sur votre fork, avant la fin de la séance :
@@ -787,7 +712,6 @@ Sur votre fork, avant la fin de la séance :
 | Image Next.js standalone, front affichant les articles                   | 3      |
 | Réseaux `frontend` / `backend` isolés                                    | 2      |
 | Réponses aux questions (`REPONSES.md`)                                   | 5      |
-| Bonus                                                                    | +2     |
 
 ## Pièges fréquents
 
